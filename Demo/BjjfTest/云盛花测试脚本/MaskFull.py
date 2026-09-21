@@ -1,5 +1,5 @@
 """
-金服掩码全流程：撞库 + 进件
+云盛花掩码采量：撞库 + 进件
 支持单发 / 并发。加密对齐 AesUtil CBC（key=b81281e4813a174a）。
 """
 
@@ -14,13 +14,13 @@ from copy import deepcopy
 import requests
 from SecureUtils import AesUtil
 
-AES_KEY = "b81281e4813a174a"
-CHECK_PATH = "/app/openapi/full/check/v2"
-PUSH_PATH = "/app/openapi/full/push/v2"
+AES_KEY = "66fa4d17fc49e0f2"
+CHECK_PATH = "/app/openapi/mask/check/COMMON"
+PUSH_PATH = "/app/openapi/mask/push/COMMON"
 
 ENV = {
-    1: ("https://bjjftest.hzbxhd.com/prod-api", "GpkRnE0lDXvLsfD9x7gDt8YORqALdAOuikcyDm45qU"),
-    2: ("https://bjjfuat.hzbxhd.com/prod-api", "BQnoLXEDNVHcXINHqWoYu37aqhMV2mytV33cqoUGmD"),
+    1: ("https://yshwcf.hzbxhd.com/prod-api", "wwX04QoJjfjnLMZSIIJgpoasYemKJUSKZM3xbHFltI"),
+    2: ("https://api.bxysh.com/prod-api", "wqxhjDJSSk9HtMF9mJGLTtPhBqPzFppgwy4WOg0y2z"),
     3: ("https://bjjfdev.hzbxhd.com/prod-api", "GpkRnE0lDXvLsfD9x7gDt8YORqALdAOuikcyDm45qU"),
     4: ("https://bjjfapi.hzbxhd.com/prod-api", "PAFju5UC1Gw9j5KW2bHwiHlYTcfOiocYL51S3DciJF"),
 }
@@ -125,9 +125,8 @@ class MaskFull:
     def push(self, serial_no: str) -> dict:
         self.params["phone"] = self.phone
         self.params["channelSignature"] = self.channel_signature
-        body = self.encrypt_body()
-        body["serialNo"] = serial_no
-        resp = http().post(self.domain + PUSH_PATH, json=body, timeout=30)
+        self.params["serialNo"] = serial_no
+        resp = http().post(self.domain + PUSH_PATH, json=self.encrypt_body(), timeout=30)
         return resp.json()
 
     def run(self, do_push: bool = True) -> dict:
@@ -136,7 +135,7 @@ class MaskFull:
         try:
             check_resp = self.check()
             result["check"] = check_resp
-            log(f"[撞库] phone={self.phone} code={check_resp.get('code')} msg={check_resp.get('msg')}")
+            log(f"[撞库] 手机明文={self.phone} 响应={json.dumps(check_resp, ensure_ascii=False)}")
             if check_resp.get("code") != 200:
                 result["msg"] = check_resp.get("msg")
                 return result
@@ -151,7 +150,7 @@ class MaskFull:
             result["push"] = push_resp
             result["ok"] = push_resp.get("code") == 200
             result["msg"] = push_resp.get("msg")
-            log(f"[进件] phone={self.phone} code={push_resp.get('code')} msg={push_resp.get('msg')}")
+            log(f"[进件] 手机明文={self.phone} 响应={json.dumps(push_resp, ensure_ascii=False)}")
         except Exception as e:
             result["msg"] = str(e)
             log(f"[异常] phone={self.phone} err={e}")
@@ -194,7 +193,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="金服掩码撞库+进件（单发/并发）")
     parser.add_argument("-n", "--total", type=int, default=1, help="总请求条数，默认单发")
     parser.add_argument("-w", "--workers", type=int, default=1, help="并发线程数")
-    parser.add_argument("-e", "--env", type=int, default=1, choices=list(ENV.keys()), help="1=test 2=uat 3=dev 4=prod")
+    parser.add_argument("-e", "--env", type=int, default=2, choices=list(ENV.keys()), help="1=test 2=uat 3=dev 4=prod")
     parser.add_argument("--city", default="杭州")
     parser.add_argument("--city-code", default="3101")
     parser.add_argument("--no-push", action="store_true", help="仅撞库，不进件")
