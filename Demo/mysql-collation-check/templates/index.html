@@ -1,0 +1,1005 @@
+{% raw %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MySQL排序规则校验工具</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; color: #333; }
+
+        .container { max-width: 1400px; margin: 20px auto; padding: 0 20px; }
+
+        .card {
+            background: white; border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            margin-bottom: 16px; overflow: hidden;
+        }
+        .card-header {
+            padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .card-header h2 { font-size: 16px; font-weight: 600; }
+        .card-body { padding: 20px; }
+
+        .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 13px; color: #666; font-weight: 500; }
+        .form-group input, .form-group select {
+            padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 6px;
+            font-size: 14px; outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: #1890ff; }
+
+        .btn {
+            padding: 8px 20px; border: none; border-radius: 6px;
+            font-size: 14px; cursor: pointer; transition: all 0.2s;
+            font-weight: 500;
+        }
+        .btn-primary { background: #1890ff; color: white; }
+        .btn-primary:hover { background: #40a9ff; }
+        .btn-success { background: #52c41a; color: white; }
+        .btn-success:hover { background: #73d13d; }
+        .btn-warning { background: #faad14; color: white; }
+        .btn-warning:hover { background: #ffc53d; }
+        .btn-danger { background: #ff4d4f; color: white; }
+        .btn-danger:hover { background: #ff7875; }
+        .btn-sm { padding: 4px 12px; font-size: 12px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+        th { background: #fafafa; font-weight: 600; color: #555; }
+        tr:hover { background: #f5f7fa; }
+
+        .tag {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 12px; font-weight: 500;
+        }
+        .tag-ok { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .tag-fix { background: #fff2e8; color: #fa541c; border: 1px solid #ffbb96; }
+
+        .msg { padding: 10px 16px; border-radius: 6px; margin-bottom: 12px; font-size: 14px; }
+        .msg-success { background: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .msg-error { background: #fff2f0; color: #ff4d4f; border: 1px solid #ffccc7; }
+
+        .stats { display: flex; gap: 16px; margin-bottom: 16px; }
+        .stat-item {
+            flex: 1; background: white; border-radius: 8px; padding: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08); text-align: center;
+        }
+        .stat-item .num { font-size: 28px; font-weight: 700; }
+        .stat-item .label { font-size: 13px; color: #999; margin-top: 4px; }
+
+        .loading { text-align: center; padding: 40px; color: #999; }
+
+        .breadcrumb { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 14px; }
+        .breadcrumb a { color: #1890ff; cursor: pointer; text-decoration: none; }
+        .breadcrumb a:hover { text-decoration: underline; }
+        .breadcrumb span { color: #999; }
+
+        .tab-item {
+            padding: 12px 28px; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent;
+            color: #666; user-select: none;
+        }
+        .tab-item:hover { background: rgba(255,255,255,0.1); }
+        .tab-item.active { color: white; border-bottom-color: white; }
+
+        /* 弹窗 */
+        .modal-mask {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.45); z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .modal-box {
+            background: white; border-radius: 12px; width: 520px; max-height: 80vh;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2); display: flex; flex-direction: column;
+        }
+        .modal-header {
+            padding: 20px 24px 12px; font-size: 16px; font-weight: 600;
+            border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 8px;
+        }
+        .modal-body {
+            padding: 16px 24px; overflow-y: auto; flex: 1; font-size: 14px; line-height: 1.8;
+        }
+        .modal-body .table-item {
+            display: flex; justify-content: space-between; padding: 4px 0;
+            border-bottom: 1px dashed #f0f0f0;
+        }
+        .modal-body .table-item:last-child { border-bottom: none; }
+        .modal-body .table-name { font-weight: 500; }
+        .modal-body .table-rows { color: #1890ff; font-weight: 600; }
+        .modal-body .table-skip { color: #faad14; font-size: 12px; margin-left: 8px; }
+        .modal-body .summary {
+            margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0;
+            color: #666; font-size: 13px;
+        }
+        .modal-footer {
+            padding: 12px 24px 20px; display: flex; justify-content: flex-end; gap: 10px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- 顶部导航栏 -->
+    <div style="background:#096dd9;display:flex;align-items:center;padding:0 30px;gap:0">
+        <div style="margin-right:32px;font-size:15px;font-weight:600;color:white;white-space:nowrap;padding:14px 0">MySQL 排序规则校验</div>
+        <div class="tab-item" :class="{ active: activeTab === 'datasource' }" @click="activeTab = 'datasource'" style="color:rgba(255,255,255,0.7);border-bottom-color:transparent;padding:14px 24px" :style="activeTab === 'datasource' ? {color:'#fff',borderBottomColor:'#fff'} : {}">数据源管理</div>
+        <div class="tab-item" :class="{ active: activeTab === 'check' }" @click="activeTab = 'check'" style="color:rgba(255,255,255,0.7);border-bottom-color:transparent;padding:14px 24px" :style="activeTab === 'check' ? {color:'#fff',borderBottomColor:'#fff'} : {}">校验与修复</div>
+        <div class="tab-item" :class="{ active: activeTab === 'history' }" @click="loadFixHistory" style="color:rgba(255,255,255,0.7);border-bottom-color:transparent;padding:14px 24px" :style="activeTab === 'history' ? {color:'#fff',borderBottomColor:'#fff'} : {}">修复记录</div>
+    </div>
+
+    <div class="container">
+
+        <!-- ══════════ Tab 1: 数据源管理（纯 CRUD）══════════ -->
+        <template v-if="activeTab === 'datasource'">
+            <div v-if="dsMsg" class="msg" :class="dsMsg.type === 'success' ? 'msg-success' : 'msg-error'" style="margin-top:16px">
+                {{ dsMsg.text }}
+            </div>
+
+            <!-- 数据源列表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>数据源列表</h2>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <table v-if="dsList.length">
+                        <thead>
+                            <tr>
+                                <th style="width:40px"></th>
+                                <th>名称</th>
+                                <th>主机</th>
+                                <th>端口</th>
+                                <th>用户名</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="ds in dsList" :key="ds.id" @click="editDsId = ds.id" :style="{ cursor: 'pointer', background: editDsId === ds.id ? '#e6f7ff' : '' }">
+                                <td><input type="radio" :value="ds.id" v-model="editDsId" style="pointer-events:none"></td>
+                                <td><strong>{{ ds.name }}</strong></td>
+                                <td>{{ ds.host }}</td>
+                                <td>{{ ds.port }}</td>
+                                <td>{{ ds.user }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div v-else style="padding:24px;text-align:center;color:#999">暂无数据源，请在下方新建</div>
+                </div>
+            </div>
+
+            <!-- 编辑数据源 -->
+            <div v-if="editDsId" class="card">
+                <div class="card-header">
+                    <h2>编辑数据源</h2>
+                    <button class="btn btn-danger btn-sm" @click="deleteDs">删除</button>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>名称</label>
+                            <input v-model="editForm.name" style="width:120px">
+                        </div>
+                        <div class="form-group">
+                            <label>主机</label>
+                            <input v-model="editForm.host" style="width:140px">
+                        </div>
+                        <div class="form-group">
+                            <label>端口</label>
+                            <input v-model="editForm.port" style="width:70px">
+                        </div>
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input v-model="editForm.user" style="width:100px">
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input v-model="editForm.password" type="password" placeholder="留空不修改" style="width:120px">
+                        </div>
+                        <div class="form-group" style="justify-content:flex-end">
+                            <button class="btn btn-primary" @click="updateDs">保存修改</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新建数据源 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>新建数据源</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>名称</label>
+                            <input v-model="newDs.name" placeholder="生产库" style="width:120px">
+                        </div>
+                        <div class="form-group">
+                            <label>主机</label>
+                            <input v-model="newDs.host" placeholder="localhost" style="width:140px">
+                        </div>
+                        <div class="form-group">
+                            <label>端口</label>
+                            <input v-model="newDs.port" placeholder="3306" style="width:70px">
+                        </div>
+                        <div class="form-group">
+                            <label>用户名</label>
+                            <input v-model="newDs.user" placeholder="root" style="width:100px">
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input v-model="newDs.password" type="password" placeholder="密码" style="width:120px">
+                        </div>
+                        <div class="form-group" style="justify-content:flex-end">
+                            <button class="btn btn-success" @click="saveDs" :disabled="!newDs.name">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- ══════════ Tab 2: 校验与修复（独立）══════════ -->
+        <template v-if="activeTab === 'check'">
+            <!-- 连接区 -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>选择数据源连接</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>数据源</label>
+                            <select v-model="checkDsId" style="width:280px">
+                                <option value="">-- 请选择 --</option>
+                                <option v-for="ds in dsList" :key="ds.id" :value="ds.id">
+                                    {{ ds.name }} ({{ ds.host }}:{{ ds.port }})
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="justify-content:flex-end">
+                            <button class="btn btn-primary" @click="connectCheck" :disabled="checkConnecting || !checkDsId">
+                                {{ checkConnecting ? '连接中...' : '连接' }}
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="checkMsg" class="msg" :class="checkMsg.type === 'success' ? 'msg-success' : 'msg-error'" style="margin-top:12px">
+                        {{ checkMsg.text }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据库选择 -->
+            <div v-if="checkDatabases.length" class="card">
+                <div class="card-header">
+                    <h2>选择数据库</h2>
+                    <button class="btn btn-warning btn-sm" @click="fixDatabaseCollation" :disabled="!checkSelectedDb">
+                        修改选中数据库排序规则
+                    </button>
+                </div>
+                <div class="card-body">
+                    <select v-model="checkSelectedDb" @change="loadTables" style="width:100%;padding:8px 12px;border:1px solid #d9d9d9;border-radius:6px;font-size:14px">
+                        <option value="">-- 请选择数据库 --</option>
+                        <option v-for="db in checkDatabases" :key="db" :value="db">{{ db }}</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 统计 -->
+            <div v-if="checkTables.length" class="stats">
+                <div class="stat-item">
+                    <div class="num" style="color:#1890ff">{{ checkTables.length }}</div>
+                    <div class="label">总表数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="num" style="color:#52c41a">{{ checkTables.filter(t => !t.need_fix).length }}</div>
+                    <div class="label">已符合</div>
+                </div>
+                <div class="stat-item">
+                    <div class="num" style="color:#ff4d4f">{{ checkTables.filter(t => t.need_fix).length }}</div>
+                    <div class="label">需修复</div>
+                </div>
+            </div>
+
+            <!-- 表列表 -->
+            <div v-if="checkTables.length" class="card">
+                <div class="card-header">
+                    <h2>表列表 ({{ checkSelectedDb }})</h2>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <span style="font-size:12px;color:#999">跳过阈值</span>
+                        <input v-model.number="fixThreshold" type="number" style="width:90px;padding:4px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px">
+                        <span style="font-size:12px;color:#999">行</span>
+                        <button class="btn btn-warning btn-sm" @click="calcExactRows" :disabled="calculatingRows">
+                            {{ calculatingRows ? '计算中...' : '计算精确行数' }}
+                        </button>
+                        <button class="btn btn-success btn-sm" @click="fixAllTables">一键修复所有表</button>
+                        <button class="btn btn-success btn-sm" style="background:#722ed1" @click="fixAllColumnsBatch">一键修复所有字段</button>
+                    </div>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>表名</th>
+                                <th>字符集</th>
+                                <th>当前排序规则</th>
+                                <th>异常字段</th>
+                                <th>行数</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="table in checkTables" :key="table.TABLE_NAME">
+                                <td><strong>{{ table.TABLE_NAME }}</strong></td>
+                                <td>{{ table.TABLE_CHARSET }}</td>
+                                <td>{{ table.TABLE_COLLATION }}</td>
+                                <td>
+                                    <button v-if="table.COLUMN_ISSUE_COUNT" class="btn btn-sm"
+                                        style="background:#fff1f0;color:#cf1322;border:1px solid #ffa39e"
+                                        @click="viewColumns(table.TABLE_NAME)">
+                                        {{ table.COLUMN_ISSUE_COUNT }} 个
+                                    </button>
+                                    <span v-else class="tag tag-ok">0 个</span>
+                                </td>
+                                <td>
+                                    <span v-if="exactRows[table.TABLE_NAME] !== undefined" style="color:#1890ff;font-weight:600">
+                                        {{ exactRows[table.TABLE_NAME].toLocaleString() }}
+                                    </span>
+                                    <span v-else style="color:#999">≈{{ (table.TABLE_ROWS || 0).toLocaleString() }}</span>
+                                </td>
+                                <td>
+                                    <span v-if="table.need_fix" class="tag tag-fix">需修复</span>
+                                    <span v-else class="tag tag-ok">已符合</span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" @click="viewColumns(table.TABLE_NAME)" style="margin-right:6px">查看列</button>
+                                    <button class="btn btn-warning btn-sm" @click="fixTable(table.TABLE_NAME)" style="margin-right:6px">修复表</button>
+                                    <button class="btn btn-success btn-sm" @click="viewColumns(table.TABLE_NAME); setTimeout(() => fixAllColumns(), 500)">修复字段</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 列详情 -->
+            <template v-if="checkColumns.length">
+                <!-- 列统计 -->
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="num" style="color:#1890ff">{{ checkColumns.length }}</div>
+                        <div class="label">总字段数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="num" style="color:#52c41a">{{ checkColumns.filter(c => !c.need_fix).length }}</div>
+                        <div class="label">已符合</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="num" style="color:#ff4d4f">{{ checkColumns.filter(c => c.need_fix).length }}</div>
+                        <div class="label">需修复</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>
+                            <span class="breadcrumb">
+                                <a @click="checkColumns = []">{{ checkSelectedDb }}</a>
+                                <span>/</span>
+                                <span>{{ checkSelectedTable }}</span>
+                                <span> - 列详情</span>
+                            </span>
+                        </h2>
+                        <div style="display:flex;gap:8px;align-items:center" v-if="checkColumns.filter(c => c.need_fix).length">
+                            <span style="font-size:12px;color:#999">跳过阈值</span>
+                            <input v-model.number="fixThreshold" type="number" style="width:90px;padding:4px 8px;border:1px solid #d9d9d9;border-radius:4px;font-size:12px">
+                            <span style="font-size:12px;color:#999">行</span>
+                            <button class="btn btn-success btn-sm" @click="fixAllColumns">一键修复所有字段</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>列名</th>
+                                    <th>类型</th>
+                                    <th>字符集</th>
+                                    <th>排序规则</th>
+                                    <th>可为空</th>
+                                    <th>键</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="col in checkColumns" :key="col.COLUMN_NAME">
+                                    <td><strong>{{ col.COLUMN_NAME }}</strong></td>
+                                    <td><code>{{ col.COLUMN_TYPE }}</code></td>
+                                    <td>{{ col.CHARACTER_SET_NAME || '-' }}</td>
+                                    <td>{{ col.COLLATION_NAME || '-' }}</td>
+                                    <td>{{ col.IS_NULLABLE }}</td>
+                                    <td>{{ col.COLUMN_KEY || '-' }}</td>
+                                    <td>
+                                        <span v-if="col.COLLATION_NAME" class="tag" :class="col.need_fix ? 'tag-fix' : 'tag-ok'">
+                                            {{ col.need_fix ? '需修复' : '已符合' }}
+                                        </span>
+                                        <span v-else class="tag" style="background:#f5f5f5;color:#999;border:1px solid #d9d9d9">无排序规则</span>
+                                    </td>
+                                    <td>
+                                        <button v-if="col.need_fix" class="btn btn-warning btn-sm" @click="fixColumn(col)">修复</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </template>
+
+            <!-- 字段问题汇总 -->
+            <div v-if="columnIssues.length" class="card" style="margin-top:16px">
+                <div class="card-header" style="cursor:pointer" @click="showColumnIssues = !showColumnIssues">
+                    <h2 style="display:flex;align-items:center;gap:8px">
+                        <span>字段问题汇总</span>
+                        <span class="tag tag-fix">{{ columnIssues.length }} 张表</span>
+                        <span style="font-size:12px;color:#999;margin-left:auto">{{ showColumnIssues ? '收起' : '展开' }}</span>
+                    </h2>
+                </div>
+                <div v-if="showColumnIssues" class="card-body" style="padding:0">
+                    <div v-for="issue in columnIssues" :key="issue.table" style="border-bottom:1px solid #f0f0f0;padding:12px 20px">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                            <strong>{{ issue.table }}</strong>
+                            <span class="tag tag-fix">{{ issue.columns.length }} 个字段</span>
+                            <button class="btn btn-success btn-sm" style="margin-left:auto;font-size:11px;padding:2px 10px"
+                                @click="checkSelectedTable = issue.table; viewColumns(issue.table)">查看并修复</button>
+                        </div>
+                        <table style="width:100%;font-size:12px">
+                            <tr v-for="col in issue.columns" :key="col.name" style="border-bottom:1px dashed #f0f0f0">
+                                <td style="padding:4px 0;width:200px"><code>{{ col.name }}</code></td>
+                                <td style="padding:4px 0;width:120px;color:#999">{{ col.type }}</td>
+                                <td style="padding:4px 0;width:100px">字符集: {{ col.charset }}</td>
+                                <td style="padding:4px 0">排序规则: {{ col.collation }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="checkLoading" class="loading">加载中...</div>
+        </template>
+
+        <!-- ══════════ Tab 3: 修复记录 ══════════ -->
+        <template v-if="activeTab === 'history'">
+            <div v-if="fixHistory.length === 0" class="card">
+                <div class="card-body" style="text-align:center;padding:40px;color:#999">暂无修复记录</div>
+            </div>
+            <div v-for="(record, idx) in fixHistory" :key="idx" class="card">
+                <div class="card-header">
+                    <h2 style="font-size:14px">
+                        {{ record.time }} — {{ record.database }}
+                        <span style="color:#52c41a;margin-left:8px">修复 {{ record.fixed }}</span>
+                        <span v-if="record.skipped" style="color:#faad14;margin-left:8px">跳过 {{ record.skipped }}</span>
+                        <span v-if="record.failed" style="color:#ff4d4f;margin-left:8px">失败 {{ record.failed }}</span>
+                    </h2>
+                </div>
+                <div class="card-body" style="padding:0">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>表名</th>
+                                <th>行数</th>
+                                <th>状态</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="d in record.details" :key="d.table">
+                                <td><strong>{{ d.table }}</strong></td>
+                                <td>{{ d.row_count !== undefined ? d.row_count.toLocaleString() : '-' }}</td>
+                                <td>
+                                    <span v-if="d.status === 'fixed'" class="tag tag-ok">已修复</span>
+                                    <span v-else-if="d.status === 'skipped'" class="tag" style="background:#fffbe6;color:#faad14;border:1px solid #ffe58f">已跳过</span>
+                                    <span v-else class="tag tag-fix">失败</span>
+                                </td>
+                                <td style="font-size:12px;color:#999">{{ d.error || '' }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- 确认弹窗 -->
+    <div v-if="confirmModal.show" class="modal-mask" @click.self="confirmModal.onCancel">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span style="font-size:20px">⚠️</span>
+                <span>{{ confirmModal.title }}</span>
+            </div>
+            <div class="modal-body">
+                <div v-for="t in confirmModal.tables" :key="t.name" class="table-item">
+                    <div>
+                        <span>
+                            <span class="table-name">{{ t.name }}</span>
+                            <span v-if="t.skip" class="table-skip">将跳过</span>
+                        </span>
+                        <div v-if="t.fields && t.fields.length" style="margin-top:5px;font-size:12px;color:#cf1322">
+                            异常字段（{{ t.fields.length }}）：{{ t.fields.join('、') }}
+                        </div>
+                    </div>
+                    <span class="table-rows">{{ t.rows }}</span>
+                </div>
+                <div class="summary">{{ confirmModal.summary }}</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" style="background:#f5f5f5;color:#666" @click="confirmModal.onCancel">取消</button>
+                <button class="btn btn-primary" @click="confirmModal.onOk">确认执行</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const { createApp, ref, reactive } = Vue;
+
+createApp({
+    setup() {
+        const activeTab = ref('datasource');
+        const showMessage = (text, type = 'success') => {
+            activeTab._msg = { text, type };
+        };
+
+        // 确认弹窗
+        const confirmModal = reactive({
+            show: false,
+            title: '',
+            tables: [],
+            summary: '',
+            onOk: null,
+            onCancel: null
+        });
+        const showConfirm = (title, tables, summary) => {
+            return new Promise((resolve) => {
+                confirmModal.show = true;
+                confirmModal.title = title;
+                confirmModal.tables = tables;
+                confirmModal.summary = summary;
+                confirmModal.onOk = () => { confirmModal.show = false; resolve(true); };
+                confirmModal.onCancel = () => { confirmModal.show = false; resolve(false); };
+            });
+        };
+
+        // ════════════════════════════════════════
+        // Tab 1: 数据源管理（纯 CRUD，不连接）
+        // ════════════════════════════════════════
+        const dsList = ref([]);
+        const editDsId = ref('');
+        const editForm = reactive({ name: '', host: '', port: '', user: '', password: '' });
+        const newDs = reactive({ name: '', host: 'localhost', port: '3306', user: 'root', password: '' });
+        const dsMsg = ref(null);
+
+        const showDsMsg = (text, type = 'success') => {
+            dsMsg.value = { text, type };
+            setTimeout(() => dsMsg.value = null, 3000);
+        };
+
+        const loadDsList = async () => {
+            try {
+                const res = await fetch('/api/datasources');
+                const data = await res.json();
+                if (data.success) dsList.value = data.data;
+            } catch (e) {
+                showDsMsg('加载失败: ' + e.message, 'error');
+            }
+        };
+
+        const saveDs = async () => {
+            if (!newDs.name) return;
+            try {
+                const res = await fetch('/api/datasources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newDs)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showDsMsg('数据源已保存', 'success');
+                    newDs.name = '';
+                    newDs.host = 'localhost';
+                    newDs.port = '3306';
+                    newDs.user = 'root';
+                    newDs.password = '';
+                    loadDsList();
+                } else {
+                    showDsMsg(data.error, 'error');
+                }
+            } catch (e) {
+                showDsMsg('保存失败: ' + e.message, 'error');
+            }
+        };
+
+        const updateDs = async () => {
+            if (!editDsId.value) return;
+            const payload = { name: editForm.name, host: editForm.host, port: parseInt(editForm.port), user: editForm.user };
+            if (editForm.password) payload.password = editForm.password;
+            try {
+                const res = await fetch(`/api/datasources/${editDsId.value}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showDsMsg('数据源已更新', 'success');
+                    editForm.password = '';
+                    loadDsList();
+                } else {
+                    showDsMsg(data.error, 'error');
+                }
+            } catch (e) {
+                showDsMsg('更新失败: ' + e.message, 'error');
+            }
+        };
+
+        const deleteDs = async () => {
+            if (!editDsId.value) return;
+            if (!confirm('确定删除该数据源？')) return;
+            try {
+                const res = await fetch(`/api/datasources/${editDsId.value}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    showDsMsg('已删除', 'success');
+                    editDsId.value = '';
+                    loadDsList();
+                } else {
+                    showDsMsg(data.error, 'error');
+                }
+            } catch (e) {
+                showDsMsg('删除失败: ' + e.message, 'error');
+            }
+        };
+
+        // Tab 1: 监听选中，填充编辑表单
+        setInterval(() => {
+            const ds = dsList.value.find(d => d.id === editDsId.value);
+            if (ds) {
+                editForm.name = ds.name;
+                editForm.host = ds.host;
+                editForm.port = String(ds.port);
+                editForm.user = ds.user;
+                editForm.password = '';
+            }
+        }, 300);
+
+        loadDsList();
+
+        // ════════════════════════════════════════
+        // Tab 2: 校验与修复（独立，自带连接逻辑）
+        // ════════════════════════════════════════
+        const checkDsId = ref('');
+        const checkConnecting = ref(false);
+        const checkMsg = ref(null);
+        const checkDatabases = ref([]);
+        const checkSelectedDb = ref('');
+        const checkTables = ref([]);
+        const checkColumns = ref([]);
+        const checkSelectedTable = ref('');
+        const checkLoading = ref(false);
+        const exactRows = reactive({});
+        const calculatingRows = ref(false);
+        const fixThreshold = ref(100000);
+        const fixHistory = ref([]);
+        const columnIssues = ref([]);
+        const showColumnIssues = ref(false);
+
+        const showCheckMsg = (text, type = 'success') => {
+            checkMsg.value = { text, type };
+            setTimeout(() => checkMsg.value = null, 5000);
+        };
+
+        const connectCheck = async () => {
+            if (!checkDsId.value) return;
+            checkConnecting.value = true;
+            checkMsg.value = null;
+            try {
+                const res = await fetch(`/api/datasources/${checkDsId.value}/connect`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showCheckMsg(data.message, 'success');
+                    checkDatabases.value = [];
+                    checkSelectedDb.value = '';
+                    checkTables.value = [];
+                    checkColumns.value = [];
+                    Object.keys(exactRows).forEach(k => delete exactRows[k]);
+                    // 加载数据库列表
+                    const dbRes = await fetch('/api/databases');
+                    const dbData = await dbRes.json();
+                    if (dbData.success) checkDatabases.value = dbData.data;
+                } else {
+                    showCheckMsg(data.error, 'error');
+                }
+            } catch (e) {
+                showCheckMsg('连接失败: ' + e.message, 'error');
+            }
+            checkConnecting.value = false;
+        };
+
+        const calcExactRows = async () => {
+            const needFix = checkTables.value.filter(t => t.need_fix);
+            if (!needFix.length) { showCheckMsg('没有需要修复的表', 'error'); return; }
+            calculatingRows.value = true;
+            try {
+                const res = await fetch('/api/row_counts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        database: checkSelectedDb.value,
+                        tables: needFix.map(t => t.TABLE_NAME)
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Object.assign(exactRows, data.data);
+                    const total = Object.values(data.data).reduce((s, v) => s + (typeof v === 'number' ? v : 0), 0);
+                    showCheckMsg(`精确行数计算完成，需修复表共 ${total.toLocaleString()} 行`, 'success');
+                } else {
+                    showCheckMsg(data.error, 'error');
+                }
+            } catch (e) {
+                showCheckMsg('计算失败: ' + e.message, 'error');
+            }
+            calculatingRows.value = false;
+        };
+
+        const loadTables = async () => {
+            if (!checkSelectedDb.value) { checkTables.value = []; checkColumns.value = []; return; }
+            checkLoading.value = true;
+            checkColumns.value = [];
+            columnIssues.value = [];
+            Object.keys(exactRows).forEach(k => delete exactRows[k]);
+            try {
+                const res = await fetch(`/api/tables/${checkSelectedDb.value}`);
+                const data = await res.json();
+                if (data.success) {
+                    checkTables.value = data.data;
+                    columnIssues.value = data.data
+                        .filter(t => t.COLUMN_ISSUE_COUNT > 0)
+                        .map(t => ({ table: t.TABLE_NAME, columns: t.COLUMN_ISSUES }));
+                } else {
+                    showCheckMsg(data.error, 'error');
+                }
+            } catch (e) {
+                showCheckMsg('加载表失败: ' + e.message, 'error');
+            }
+            checkLoading.value = false;
+        };
+
+        const viewColumns = async (table) => {
+            checkSelectedTable.value = table;
+            checkLoading.value = true;
+            try {
+                const res = await fetch(`/api/columns/${checkSelectedDb.value}/${table}`);
+                const data = await res.json();
+                if (data.success) checkColumns.value = data.data;
+                else showCheckMsg(data.error, 'error');
+            } catch (e) {
+                showCheckMsg('加载列失败: ' + e.message, 'error');
+            }
+            checkLoading.value = false;
+        };
+
+        const fixTable = async (table) => {
+            try {
+                const res = await fetch('/api/fix_table_collation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ database: checkSelectedDb.value, table })
+                });
+                const data = await res.json();
+                showCheckMsg(data.message || data.error, data.success ? 'success' : 'error');
+                if (data.success) loadTables();
+            } catch (e) {
+                showCheckMsg('修复失败: ' + e.message, 'error');
+            }
+        };
+
+        const fixAllTables = async () => {
+            const needFix = checkTables.value.filter(t => t.need_fix);
+            if (!needFix.length) { showCheckMsg('所有表已符合要求', 'success'); return; }
+
+            // 构建弹窗数据
+            const modalTables = [];
+            let totalRows = 0;
+            for (const t of needFix) {
+                const rows = exactRows[t.TABLE_NAME];
+                const num = typeof rows === 'number' ? rows : (t.TABLE_ROWS || 0);
+                const isSkip = num > fixThreshold.value;
+                modalTables.push({
+                    name: t.TABLE_NAME,
+                    rows: rows !== undefined ? rows.toLocaleString() : `≈${num.toLocaleString()}`,
+                    skip: isSkip,
+                    fields: t.COLUMN_ISSUES.map(c => c.name)
+                });
+                totalRows += num;
+            }
+            const skipCount = modalTables.filter(t => t.skip).length;
+            const fieldCount = needFix.reduce((sum, t) => sum + t.COLUMN_ISSUE_COUNT, 0);
+            const summary = `共 ${needFix.length} 张表，约 ${totalRows.toLocaleString()} 行` +
+                (fieldCount ? `，涉及 ${fieldCount} 个异常字段` : '') +
+                (skipCount ? `，${skipCount} 张超阈值将自动跳过` : '') +
+                `，确认执行？`;
+
+            const ok = await showConfirm(
+                `即将修复 ${needFix.length} 张表（阈值：${fixThreshold.value.toLocaleString()} 行）`,
+                modalTables,
+                summary
+            );
+            if (!ok) return;
+
+            checkLoading.value = true;
+            try {
+                const res = await fetch('/api/fix_all_tables', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ database: checkSelectedDb.value, threshold: fixThreshold.value })
+                });
+                const data = await res.json();
+                showCheckMsg(data.message || data.error, data.success ? 'success' : 'error');
+                if (data.skipped && data.skipped.length) {
+                    showCheckMsg(`${data.message}\n跳过: ${data.skipped.map(s => s.name).join(', ')}`, 'error');
+                }
+                loadTables();
+            } catch (e) {
+                showCheckMsg('修复失败: ' + e.message, 'error');
+            }
+            checkLoading.value = false;
+        };
+
+        const fixColumn = async (col) => {
+            try {
+                const res = await fetch('/api/fix_column_collation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        database: checkSelectedDb.value,
+                        table: checkSelectedTable.value,
+                        column: col.COLUMN_NAME
+                    })
+                });
+                const data = await res.json();
+                showCheckMsg(data.message || data.error, data.success ? 'success' : 'error');
+                if (data.success) viewColumns(checkSelectedTable.value);
+            } catch (e) {
+                showCheckMsg('修复失败: ' + e.message, 'error');
+            }
+        };
+
+        const fixAllColumns = async () => {
+            const needFix = checkColumns.value.filter(c => c.need_fix);
+            if (!needFix.length) { showCheckMsg('所有字段已符合要求', 'success'); return; }
+
+            const ok = await showConfirm(
+                `即将修复表 ${checkSelectedTable.value} 的 ${needFix.length} 个字段（阈值：${fixThreshold.value.toLocaleString()} 行）`,
+                [{
+                    name: checkSelectedTable.value,
+                    rows: '...',
+                    skip: false,
+                    fields: needFix.map(c => c.COLUMN_NAME)
+                }],
+                `共 ${needFix.length} 个字段需修复，确认执行？`
+            );
+            if (!ok) return;
+
+            checkLoading.value = true;
+            try {
+                const res = await fetch('/api/fix_all_columns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        database: checkSelectedDb.value,
+                        table: checkSelectedTable.value,
+                        threshold: fixThreshold.value
+                    })
+                });
+                const data = await res.json();
+                showCheckMsg(data.message || data.error, data.success ? 'success' : 'error');
+                viewColumns(checkSelectedTable.value);
+            } catch (e) {
+                showCheckMsg('修复失败: ' + e.message, 'error');
+            }
+            checkLoading.value = false;
+        };
+
+        const fixAllColumnsBatch = async () => {
+            const affectedTables = checkTables.value.filter(t => t.COLUMN_ISSUE_COUNT > 0);
+            if (!affectedTables.length) {
+                showCheckMsg('所有字段已符合要求', 'success');
+                return;
+            }
+            const fieldCount = affectedTables.reduce((sum, t) => sum + t.COLUMN_ISSUE_COUNT, 0);
+            const modalTables = affectedTables.map(t => {
+                const rows = exactRows[t.TABLE_NAME];
+                const num = typeof rows === 'number' ? rows : (t.TABLE_ROWS || 0);
+                return {
+                    name: t.TABLE_NAME,
+                    rows: rows !== undefined ? rows.toLocaleString() : `≈${num.toLocaleString()}`,
+                    skip: num > fixThreshold.value,
+                    fields: t.COLUMN_ISSUES.map(c => c.name)
+                };
+            });
+            const ok = await showConfirm(
+                `即将修复 ${affectedTables.length} 张表的 ${fieldCount} 个异常字段（阈值：${fixThreshold.value.toLocaleString()} 行）`,
+                modalTables,
+                `共 ${fieldCount} 个异常字段，超阈值的表将自动跳过，确认执行？`
+            );
+            if (!ok) return;
+
+            checkLoading.value = true;
+            try {
+                const res = await fetch('/api/fix_all_columns_batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ database: checkSelectedDb.value, threshold: fixThreshold.value })
+                });
+                const data = await res.json();
+                showCheckMsg(data.message || data.error, data.success ? 'success' : 'error');
+                loadTables();
+            } catch (e) {
+                showCheckMsg('修复失败: ' + e.message, 'error');
+            }
+            checkLoading.value = false;
+        };
+
+        const fixDatabaseCollation = async () => {
+            if (!checkSelectedDb.value) return;
+            try {
+                const res = await fetch('/api/fix_database_collation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ database: checkSelectedDb.value })
+                });
+                const data = await res.json();
+                showCheckMsg(data.message || data.error, data.success ? 'success' : 'error');
+            } catch (e) {
+                showCheckMsg('修复失败: ' + e.message, 'error');
+            }
+        };
+
+        // ════════════════════════════════════════
+        // Tab 3: 修复记录
+        // ════════════════════════════════════════
+        const loadFixHistory = async () => {
+            activeTab.value = 'history';
+            try {
+                const res = await fetch('/api/fix_history');
+                const data = await res.json();
+                if (data.success) fixHistory.value = data.data;
+            } catch (e) {
+                showCheckMsg('加载记录失败: ' + e.message, 'error');
+            }
+        };
+
+        return {
+            activeTab,
+            // Tab 1
+            dsList, editDsId, editForm, newDs, dsMsg,
+            saveDs, updateDs, deleteDs,
+            // Tab 2
+            checkDsId, checkConnecting, checkMsg, checkDatabases, checkSelectedDb,
+            checkTables, checkColumns, checkSelectedTable, checkLoading,
+            exactRows, calculatingRows, fixThreshold, columnIssues, showColumnIssues,
+            connectCheck, calcExactRows, loadTables, viewColumns,
+            fixTable, fixAllTables, fixColumn, fixAllColumns, fixAllColumnsBatch, fixDatabaseCollation,
+            // Tab 3
+            fixHistory, loadFixHistory,
+            // Modal
+            confirmModal, showConfirm
+        };
+    }
+}).mount('#app');
+{% endraw %}
+</script>
+</body>
+</html>

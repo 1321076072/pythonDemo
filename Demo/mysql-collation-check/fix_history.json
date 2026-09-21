@@ -1,0 +1,1064 @@
+[
+  {
+    "id": "c35e2c456b174fb58e177bc246b8e00d",
+    "time": "2026-07-22 17:56:55",
+    "operation": "一键修复所有字段",
+    "database": "ysh_job",
+    "target": {
+      "threshold": 100000
+    },
+    "success": false,
+    "message": "修复 17 个字段，跳过 1 张表，失败 20 个",
+    "total": 38,
+    "fixed": 17,
+    "failed": 20,
+    "skipped": 1,
+    "details": [
+      {
+        "table": "qrtz_cron_triggers",
+        "column": "cron_expression",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_cron_triggers",
+        "column": "time_zone_id",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "description",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "job_class_name",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "is_durable",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "is_nonconcurrent",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "is_update_data",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "requests_recovery",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "str_prop_1",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "str_prop_2",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "str_prop_3",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "bool_prop_1",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "bool_prop_2",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "description",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "trigger_state",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "trigger_type",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "calendar_name",
+        "row_count": null,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_blob_triggers",
+        "column": "sched_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_blob_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_blob_triggers",
+        "column": "trigger_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_blob_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_blob_triggers",
+        "column": "trigger_group",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_blob_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_cron_triggers",
+        "column": "sched_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_CRON_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_cron_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_cron_triggers",
+        "column": "trigger_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_CRON_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_cron_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_cron_triggers",
+        "column": "trigger_group",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_CRON_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_cron_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "sched_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_job_details` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "job_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'job_name' and referenced column 'job_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_job_details` MODIFY COLUMN `job_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "job_group",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'job_group' and referenced column 'job_group' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_job_details` MODIFY COLUMN `job_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_simple_triggers",
+        "column": "sched_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_SIMPLE_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simple_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_simple_triggers",
+        "column": "trigger_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_SIMPLE_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simple_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_simple_triggers",
+        "column": "trigger_group",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_SIMPLE_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simple_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "sched_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_SIMPROP_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simprop_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "trigger_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_SIMPROP_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simprop_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "trigger_group",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_SIMPROP_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simprop_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "sched_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "trigger_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "trigger_group",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "job_name",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'job_name' and referenced column 'job_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `job_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "job_group",
+        "row_count": null,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'job_group' and referenced column 'job_group' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `job_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "table": "sys_job_log",
+        "column": "",
+        "row_count": 185861,
+        "status": "skipped",
+        "error": "行数超阈值",
+        "sql": ""
+      }
+    ],
+    "error_logs": [
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_blob_triggers",
+        "column": "sched_name",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_blob_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_blob_triggers",
+        "column": "trigger_name",
+        "message": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_blob_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_blob_triggers",
+        "column": "trigger_group",
+        "message": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_blob_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_cron_triggers",
+        "column": "sched_name",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_CRON_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_cron_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_cron_triggers",
+        "column": "trigger_name",
+        "message": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_CRON_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_cron_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_cron_triggers",
+        "column": "trigger_group",
+        "message": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_CRON_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_cron_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_job_details",
+        "column": "sched_name",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_job_details` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_job_details",
+        "column": "job_name",
+        "message": "(3780, \"Referencing column 'job_name' and referenced column 'job_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_job_details` MODIFY COLUMN `job_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_job_details",
+        "column": "job_group",
+        "message": "(3780, \"Referencing column 'job_group' and referenced column 'job_group' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_job_details` MODIFY COLUMN `job_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_simple_triggers",
+        "column": "sched_name",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_SIMPLE_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simple_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_simple_triggers",
+        "column": "trigger_name",
+        "message": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_SIMPLE_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simple_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_simple_triggers",
+        "column": "trigger_group",
+        "message": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_SIMPLE_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simple_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_simprop_triggers",
+        "column": "sched_name",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_SIMPROP_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simprop_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_simprop_triggers",
+        "column": "trigger_name",
+        "message": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_SIMPROP_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simprop_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_simprop_triggers",
+        "column": "trigger_group",
+        "message": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_SIMPROP_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_simprop_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_triggers",
+        "column": "sched_name",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `sched_name` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_triggers",
+        "column": "trigger_name",
+        "message": "(3780, \"Referencing column 'trigger_name' and referenced column 'trigger_name' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `trigger_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_triggers",
+        "column": "trigger_group",
+        "message": "(3780, \"Referencing column 'trigger_group' and referenced column 'trigger_group' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `trigger_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_triggers",
+        "column": "job_name",
+        "message": "(3780, \"Referencing column 'job_name' and referenced column 'job_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `job_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      },
+      {
+        "time": "2026-07-22 17:56:55",
+        "table": "qrtz_triggers",
+        "column": "job_group",
+        "message": "(3780, \"Referencing column 'job_group' and referenced column 'job_group' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": "ALTER TABLE `qrtz_triggers` MODIFY COLUMN `job_group` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL"
+      }
+    ]
+  },
+  {
+    "id": "d136a389d9954825a4bcd2919f2c5938",
+    "time": "2026-07-22 17:56:48",
+    "operation": "一键修复所有表",
+    "database": "ysh_job",
+    "target": {
+      "threshold": 100000
+    },
+    "success": false,
+    "message": "成功修复 6 张表，跳过 1 张（超阈值），失败 6 张",
+    "total": 13,
+    "fixed": 6,
+    "failed": 6,
+    "skipped": 1,
+    "details": [
+      {
+        "table": "qrtz_calendars",
+        "column": "",
+        "row_count": 0,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_fired_triggers",
+        "column": "",
+        "row_count": 0,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_locks",
+        "column": "",
+        "row_count": 4,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_paused_trigger_grps",
+        "column": "",
+        "row_count": 0,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_scheduler_state",
+        "column": "",
+        "row_count": 2,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "sys_job",
+        "column": "",
+        "row_count": 117,
+        "status": "fixed",
+        "error": "",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_blob_triggers",
+        "column": "",
+        "row_count": 0,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_cron_triggers",
+        "column": "",
+        "row_count": 128,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_CRON_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_job_details",
+        "column": "",
+        "row_count": 128,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_simple_triggers",
+        "column": "",
+        "row_count": 0,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_SIMPLE_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_simprop_triggers",
+        "column": "",
+        "row_count": 0,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_SIMPROP_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "table": "qrtz_triggers",
+        "column": "",
+        "row_count": 128,
+        "status": "failed",
+        "error": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "table": "sys_job_log",
+        "column": "",
+        "row_count": 185861,
+        "status": "skipped",
+        "error": "",
+        "sql": ""
+      }
+    ],
+    "error_logs": [
+      {
+        "time": "2026-07-22 17:56:48",
+        "table": "qrtz_blob_triggers",
+        "column": "",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_BLOB_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "time": "2026-07-22 17:56:48",
+        "table": "qrtz_cron_triggers",
+        "column": "",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_CRON_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "time": "2026-07-22 17:56:48",
+        "table": "qrtz_job_details",
+        "column": "",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "time": "2026-07-22 17:56:48",
+        "table": "qrtz_simple_triggers",
+        "column": "",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_SIMPLE_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "time": "2026-07-22 17:56:48",
+        "table": "qrtz_simprop_triggers",
+        "column": "",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_SIMPROP_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      },
+      {
+        "time": "2026-07-22 17:56:48",
+        "table": "qrtz_triggers",
+        "column": "",
+        "message": "(3780, \"Referencing column 'sched_name' and referenced column 'sched_name' in foreign key constraint 'QRTZ_TRIGGERS_ibfk_1' are incompatible.\")",
+        "sql": ""
+      }
+    ]
+  },
+  {
+    "time": "2026-07-22 15:27:41",
+    "database": "ysh_system",
+    "total": 290,
+    "fixed": 63,
+    "failed": 0,
+    "skipped": 0,
+    "details": [
+      {
+        "table": "offline_customer_plan",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_institutional_recharge_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_loan_aid_agency",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_loan_allocation",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_loan_city",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_loan_plan_city",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_plan",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_plan_open_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_province_city",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_push_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_push_record_detailed",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "offline_third_push_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_banner",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_behavior",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_channel_config",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_city_loan_config",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_customer_behavior",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_customer_product",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_dept",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_dict_data",
+        "row_count": 594,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_dict_type",
+        "row_count": 147,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_icon",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_icon_group_contact",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_institutional_recharge_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_loan_aid_agency",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_loan_allocation",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_loan_city",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_loan_guest_config",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_loan_plan_city",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_loan_push_log",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_logininfor",
+        "row_count": 26,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_menu",
+        "row_count": 642,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_menu_copy1",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_notice",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_oper_log",
+        "row_count": 379,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_plan",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_plan_1121_bak",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_plan_old",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_plan_open_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_post",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_probability",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_product_see",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_province_city",
+        "row_count": 3427,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_province_city_br",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_province_city_copy2",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_province_city_old",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_push_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_push_record_1121_bak",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_push_record_detailed",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_push_record_old",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_role",
+        "row_count": 2,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_role_dept",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_role_menu",
+        "row_count": 637,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_statistics_channel",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_third_match_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_third_push_record",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_third_push_record1",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_upload",
+        "row_count": 4,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_user",
+        "row_count": 3,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_user_post",
+        "row_count": 1,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_user_role",
+        "row_count": 4,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_version",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "sys_version_freertos",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      }
+    ]
+  },
+  {
+    "time": "2026-07-22 15:25:06",
+    "database": "ysh_app",
+    "total": 105,
+    "fixed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "details": [
+      {
+        "table": "app_api_bank",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "app_credit",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "app_customer_details_api",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "app_customer_plan",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "app_customer_product",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      },
+      {
+        "table": "app_sign_log",
+        "row_count": 0,
+        "status": "fixed",
+        "error": ""
+      }
+    ]
+  }
+]
