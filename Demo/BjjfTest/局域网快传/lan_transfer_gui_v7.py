@@ -3,11 +3,11 @@
 """
 局域网直连传输工具 - GUI 版 v7.0
 功能：v6全部 + 拖拽发送 + 系统通知 + 设备自动发现 + 深色主题 + 差异同步 + 速度曲线
-依赖：pip install cryptography pystray pillow matplotlib plyer tkinterdnd2
+依赖：pip install cryptography pystray pillow matplotlib plyer tkinterdnd2 qrcode
 """
 
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, scrolledtext, font
+from tkinter import ttk, filedialog, messagebox, scrolledtext
 import re
 import socket
 import threading
@@ -21,15 +21,8 @@ import time
 import select
 import hashlib
 import base64
-import hmac
-import platform
 import ctypes
 from datetime import datetime
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
 
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
@@ -38,14 +31,35 @@ except ImportError:
     DND_FILES = None
     TkinterDnD = None
     HAS_DND = False
+
+# cryptography 延迟加载，避免拖慢启动
+_crypto = None
+
+def _load_crypto():
+    global _crypto
+    if _crypto is None:
+        from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+        from cryptography.hazmat.primitives import padding, hashes
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+        _crypto = {
+            "Cipher": Cipher, "algorithms": algorithms, "modes": modes,
+            "padding": padding, "hashes": hashes, "default_backend": default_backend,
+            "PBKDF2HMAC": PBKDF2HMAC,
+        }
+    return _crypto
 # ==================== 配置 ====================
 ROLE_RECEIVER_IP = "192.168.99.1"
 ROLE_SENDER_IP   = "192.168.99.2"
 DEFAULT_PORT     = 5000
 CHUNK_SIZE       = 65536
 MAGIC_HEADER     = b"LANT2024"
-DISCOVER_MAGIC   = b"LANT_DISCOVER_v7"
-DISCOVER_OFFSET  = 100
+DISCOVER_MAGIC   = b"LANT_DISCOVER_v8"
+DISCOVER_PORT    = DEFAULT_PORT + 100  # 固定发现口，与传输端口解耦
+DISCOVER_QUERY   = 0
+DISCOVER_HERE    = 1
+DISCOVER_BEACON  = 3.0   # 秒：周期宣告
+DISCOVER_TTL     = 12.0  # 秒：对端失联过期
 SKIP_OFFSET      = (1 << 64) - 1  # 接收端：内容未变化，跳过正文
 HISTORY_FILE     = os.path.join(os.path.expanduser("~"), ".lan_transfer_history.json")
 
@@ -190,7 +204,12 @@ def _decode_console(raw: bytes) -> str:
             continue
     return raw.decode("utf-8", errors="replace")
 
-def get_ethernet_interfaces():
+_iface_cache = {"ts": 0.0, "list": None}
+
+def get_ethernet_interfaces(force=False):
+    now = time.time()
+    if not force and _iface_cache["list"] is not None and now - _iface_cache["ts"] < 30:
+        return list(_iface_cache["list"])
     interfaces = []
     if sys.platform == "win32":
         try:
@@ -213,8 +232,10 @@ def get_ethernet_interfaces():
                         interfaces.append(iface)
         except Exception:
             interfaces = []
-    return interfaces or (["以太网"] if sys.platform == "win32" else ["eth0"])
-
+    interfaces = interfaces or (["以太网"] if sys.platform == "win32" else ["eth0"])
+    _iface_cache["ts"] = now
+    _iface_cache["list"] = interfaces
+    return list(interfaces)
 def set_static_ip(iface, ip):
     if sys.platform == "win32":
         cmd = f'netsh interface ip set address name="{iface}" static {ip} 255.255.255.0'
@@ -231,17 +252,37 @@ def set_dhcp(iface):
     r = subprocess.run(f"sudo dhclient {iface}", shell=True, capture_output=True)
     return r.returncode == 0
 
+_local_ips_cache = (0.0, frozenset())
+
 def local_ips():
+    """本机 IPv4 集合；短缓存，避免发现循环里反复建 socket。"""
+    global _local_ips_cache
+    now = time.time()
+    ts, cached = _local_ips_cache
+    if now - ts < 2.0 and cached:
+        return set(cached)
     ips = {"127.0.0.1"}
     try:
         for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
             ips.add(info[4][0])
-    except Exception:
+    except OSError:
         pass
     ip = get_local_ip()
     if ip and ip != "未知":
         ips.add(ip)
+    _local_ips_cache = (now, frozenset(ips))
     return ips
+
+def broadcast_targets():
+    """255.255.255.255 + 各本机 /24 定向广播（多网卡场景更稳）。"""
+    addrs = {"255.255.255.255"}
+    for ip in local_ips():
+        if ip.startswith("127."):
+            continue
+        parts = ip.split(".")
+        if len(parts) == 4 and all(p.isdigit() for p in parts):
+            addrs.add(".".join(parts[:3] + ["255"]))
+    return addrs
 
 def safe_basename(name):
     name = (name or "unknown").replace("\\", "/").split("/")[-1].strip()
@@ -266,17 +307,113 @@ def get_local_ip():
     except Exception:
         return "未知"
 
+def share_base_url(ip, port):
+    """HTTP 共享根链接：手机扫码后浏览器直接打开目录。"""
+    return f"http://{ip}:{port}/"
+
+def make_qr_image(url, box_size=8):
+    """返回 PIL Image；缺 qrcode/Pillow 时返回 None。"""
+    try:
+        import qrcode
+        from PIL import Image  # noqa: F401 — make_image 需要 Pillow
+    except ImportError:
+        return None
+    qr = qrcode.QRCode(
+        version=None,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=box_size,
+        border=2,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    try:
+        return qr.make_image(fill_color="black", back_color="white").convert("RGB")
+    except ImportError:
+        return None
+
+def show_share_qr_window(parent, url, on_close=None):
+    """弹窗显示二维码 + 可复制链接。扫码即打开下载页。"""
+    win = tk.Toplevel(parent)
+    win.title("扫码获取共享链接")
+    win.attributes("-topmost", True)
+    win.resizable(False, False)
+
+    ttk.Label(win, text="手机扫描二维码，自动打开共享目录", style="Title.TLabel").pack(padx=16, pady=(12, 4))
+
+    photo = None
+    img = make_qr_image(url)
+    if img is not None:
+        from PIL import ImageTk
+        photo = ImageTk.PhotoImage(img)
+        lbl = ttk.Label(win, image=photo)
+        lbl.image = photo  # 防 GC
+        lbl.pack(padx=16, pady=4)
+    else:
+        ttk.Label(
+            win, text="未安装 qrcode/Pillow，仅显示链接\npip install qrcode pillow",
+            style="Muted.TLabel", justify="center",
+        ).pack(padx=16, pady=8)
+
+    url_var = tk.StringVar(value=url)
+    entry = ttk.Entry(win, textvariable=url_var, width=42, justify="center")
+    entry.pack(padx=16, pady=4, fill="x")
+    entry.select_range(0, "end")
+
+    btn_row = ttk.Frame(win)
+    btn_row.pack(pady=(4, 12))
+
+    def copy_url():
+        win.clipboard_clear()
+        win.clipboard_append(url)
+        win.update_idletasks()
+
+    ttk.Button(btn_row, text="复制链接", style="Accent.TButton", command=copy_url).pack(side="left", padx=4)
+    ttk.Button(btn_row, text="关闭", command=win.destroy).pack(side="left", padx=4)
+
+    def _on_destroy(_event=None):
+        if on_close:
+            on_close()
+
+    win.bind("<Destroy>", lambda e: _on_destroy() if e.widget is win else None)
+    win.update_idletasks()
+    # 相对主窗口居中
+    try:
+        px = parent.winfo_rootx() + (parent.winfo_width() - win.winfo_reqwidth()) // 2
+        py = parent.winfo_rooty() + (parent.winfo_height() - win.winfo_reqheight()) // 2
+        win.geometry(f"+{max(0, px)}+{max(0, py)}")
+    except tk.TclError:
+        pass
+    return win
+
 # ==================== 设备自动发现 ====================
+def _discover_pack(kind, tcp_port, name):
+    name_b = (name or "").encode("utf-8")[:200]
+    return DISCOVER_MAGIC + bytes([kind & 0xFF]) + struct.pack(">H", int(tcp_port) & 0xFFFF) + name_b
+
+def _discover_unpack(data):
+    hdr = len(DISCOVER_MAGIC)
+    if not data.startswith(DISCOVER_MAGIC) or len(data) < hdr + 3:
+        return None
+    kind = data[hdr]
+    tcp_port = struct.unpack(">H", data[hdr + 1:hdr + 3])[0]
+    name = data[hdr + 3:].decode("utf-8", "ignore").strip()
+    return kind, tcp_port, name
+
 class DeviceDiscovery:
-    """UDP 广播发现。请求和响应都走 port+100，同一只 socket。"""
-    def __init__(self, port=5000, callback=None):
-        self.port = port
-        self.callback = callback
+    """
+    固定 UDP 口 DISCOVER_PORT 上做周期宣告 + 点名查询。
+    报文自带对方 TCP 传输端口，发送/接收端口不一致也能连上。
+    """
+    def __init__(self, tcp_port=DEFAULT_PORT, callback=None):
+        self.tcp_port = tcp_port
+        self.hostname = socket.gethostname()
+        self.callback = callback  # callback(ip, name, tcp_port, is_new)
         self.running = False
         self.sock = None
         self.thread = None
-        self.discovered = {}
+        self.discovered = {}  # ip -> {ip, name, port, last_seen}
         self.lock = threading.Lock()
+        self._next_beacon = 0.0
 
     def start(self):
         if self.running:
@@ -285,12 +422,12 @@ class DeviceDiscovery:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.bind(("0.0.0.0", self.port + DISCOVER_OFFSET))
-        sock.settimeout(1.0)
+        sock.bind(("0.0.0.0", DISCOVER_PORT))
+        sock.settimeout(0.5)
         self.sock = sock
         self.thread = threading.Thread(target=self._listen_loop, daemon=True)
         self.thread.start()
-        self._broadcast_discover()
+        self.probe()
 
     def stop(self):
         self.running = False
@@ -302,25 +439,70 @@ class DeviceDiscovery:
             except OSError:
                 pass
 
-    def ensure(self, port):
-        if self.running and self.port == port and self.sock:
+    def ensure(self, tcp_port=None):
+        if tcp_port is not None:
+            self.tcp_port = int(tcp_port)
+        if self.running and self.sock:
             return
         self.stop()
-        self.port = port
         self.start()
 
-    def _broadcast_discover(self):
+    def set_tcp_port(self, tcp_port):
+        self.tcp_port = int(tcp_port)
+
+    def _sendto_all(self, payload):
         sock = self.sock
         if not sock:
             return
-        msg = DISCOVER_MAGIC + struct.pack(">H", self.port)
-        try:
-            sock.sendto(msg, ("255.255.255.255", self.port + DISCOVER_OFFSET))
-        except OSError:
-            pass
+        for dest in broadcast_targets():
+            try:
+                sock.sendto(payload, (dest, DISCOVER_PORT))
+            except OSError:
+                pass
+
+    def _announce(self):
+        self._sendto_all(_discover_pack(DISCOVER_HERE, self.tcp_port, self.hostname))
+
+    def _query(self):
+        self._sendto_all(_discover_pack(DISCOVER_QUERY, self.tcp_port, self.hostname))
+
+    def probe(self):
+        """主动点名：发 QUERY + HERE，立刻露脸并拉对端。"""
+        self._announce()
+        self._query()
+
+    def _remember(self, ip, name, tcp_port):
+        now = time.time()
+        with self.lock:
+            old = self.discovered.get(ip)
+            is_new = old is None
+            item = {
+                "ip": ip,
+                "name": name or (old["name"] if old else ip),
+                "port": int(tcp_port) or (old["port"] if old else DEFAULT_PORT),
+                "last_seen": now,
+            }
+            changed = is_new or old["name"] != item["name"] or old["port"] != item["port"]
+            self.discovered[ip] = item
+        if self.callback and (is_new or changed):
+            self.callback(item["ip"], item["name"], item["port"], is_new)
+        return is_new
+
+    def _prune(self):
+        cutoff = time.time() - DISCOVER_TTL
+        with self.lock:
+            dead = [ip for ip, v in self.discovered.items() if v["last_seen"] < cutoff]
+            for ip in dead:
+                del self.discovered[ip]
+        return dead
 
     def _listen_loop(self):
         while self.running:
+            now = time.time()
+            if now >= self._next_beacon:
+                self._announce()
+                self._prune()
+                self._next_beacon = now + DISCOVER_BEACON
             sock = self.sock
             if not sock:
                 break
@@ -330,68 +512,81 @@ class DeviceDiscovery:
                 continue
             except OSError:
                 break
-            if not data.startswith(DISCOVER_MAGIC) or addr[0] in local_ips():
+            parsed = _discover_unpack(data)
+            if not parsed or addr[0] in local_ips():
                 continue
-            body = data[len(DISCOVER_MAGIC):]
-            if body.startswith(b"RESP"):
-                name = body[4:].decode("utf-8", "ignore") or addr[0]
-                item = {"ip": addr[0], "name": name, "last_seen": time.time()}
-                with self.lock:
-                    self.discovered[addr[0]] = item
-                if self.callback:
-                    self.callback(addr[0], name)
-            else:
-                resp = DISCOVER_MAGIC + b"RESP" + socket.gethostname().encode("utf-8")
+            kind, tcp_port, name = parsed
+            if kind == DISCOVER_HERE:
+                self._remember(addr[0], name or addr[0], tcp_port)
+            elif kind == DISCOVER_QUERY:
+                # 被点名：单播回 HERE，并顺便记住对方
+                self._remember(addr[0], name or addr[0], tcp_port)
                 try:
-                    sock.sendto(resp, addr)
+                    sock.sendto(
+                        _discover_pack(DISCOVER_HERE, self.tcp_port, self.hostname),
+                        addr,
+                    )
                 except OSError:
                     pass
 
-    def discover_once(self):
-        started = time.time()
-        self._broadcast_discover()
-        time.sleep(1.2)
+    def snapshot(self):
+        """当前仍在 TTL 内的对端列表。"""
+        self._prune()
         with self.lock:
             return [
-                {"ip": v["ip"], "name": v["name"]}
-                for v in self.discovered.values()
-                if v["last_seen"] >= started - 0.2
+                {"ip": v["ip"], "name": v["name"], "port": v["port"]}
+                for v in sorted(self.discovered.values(), key=lambda x: x["ip"])
+            ]
+
+    def discover_once(self, wait=1.2):
+        started = time.time()
+        self.probe()
+        time.sleep(wait)
+        with self.lock:
+            return [
+                {"ip": v["ip"], "name": v["name"], "port": v["port"]}
+                for v in sorted(self.discovered.values(), key=lambda x: x["ip"])
+                if v["last_seen"] >= started - 0.5
             ]
 
 # ==================== AES 加密 ====================
 class AESCipher:
     def __init__(self, password, salt=None):
+        c = _load_crypto()
         self.salt = salt if salt is not None else os.urandom(16)
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(), length=32, salt=self.salt,
-            iterations=100000, backend=default_backend(),
+        kdf = c["PBKDF2HMAC"](
+            algorithm=c["hashes"].SHA256(), length=32, salt=self.salt,
+            iterations=100000, backend=c["default_backend"](),
         )
         self.key = kdf.derive(password.encode("utf-8"))
 
     def encrypt(self, data):
+        c = _load_crypto()
         iv = os.urandom(16)
-        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
+        cipher = c["Cipher"](c["algorithms"].AES(self.key), c["modes"].CBC(iv), backend=c["default_backend"]())
         encryptor = cipher.encryptor()
-        padder = padding.PKCS7(128).padder()
+        padder = c["padding"].PKCS7(128).padder()
         padded = padder.update(data) + padder.finalize()
         ct = encryptor.update(padded) + encryptor.finalize()
         return iv + ct
 
     def decrypt(self, data):
+        c = _load_crypto()
         iv = data[:16]
         ct = data[16:]
-        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
+        cipher = c["Cipher"](c["algorithms"].AES(self.key), c["modes"].CBC(iv), backend=c["default_backend"]())
         decryptor = cipher.decryptor()
         padded = decryptor.update(ct) + decryptor.finalize()
-        unpadder = padding.PKCS7(128).unpadder()
+        unpadder = c["padding"].PKCS7(128).unpadder()
         return unpadder.update(padded) + unpadder.finalize()
 
     def encrypt_stream(self, in_file, out_file, chunk_size=CHUNK_SIZE, progress_callback=None):
+        c = _load_crypto()
         iv = os.urandom(16)
         out_file.write(iv)
-        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
+        cipher = c["Cipher"](c["algorithms"].AES(self.key), c["modes"].CBC(iv), backend=c["default_backend"]())
         encryptor = cipher.encryptor()
-        padder = padding.PKCS7(128).padder()
+        padder = c["padding"].PKCS7(128).padder()
         total = os.path.getsize(in_file.name)
         done = 0
         while True:
@@ -414,10 +609,11 @@ class AESCipher:
             out_file.write(ct)
 
     def decrypt_stream(self, in_file, out_file, chunk_size=CHUNK_SIZE, progress_callback=None):
+        c = _load_crypto()
         iv = in_file.read(16)
-        cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=default_backend())
+        cipher = c["Cipher"](c["algorithms"].AES(self.key), c["modes"].CBC(iv), backend=c["default_backend"]())
         decryptor = cipher.decryptor()
-        unpadder = padding.PKCS7(128).unpadder()
+        unpadder = c["padding"].PKCS7(128).unpadder()
         total = os.path.getsize(in_file.name)
         done = 16
         while True:
@@ -629,9 +825,12 @@ def recv_payload(conn, path, offset, total, stop_event, rate_limiter, log_callba
 class TransferHistory:
     def __init__(self):
         self.records = []
-        self.load()
+        self._loaded = False
 
-    def load(self):
+    def _ensure_loaded(self):
+        if self._loaded:
+            return
+        self._loaded = True
         if os.path.exists(HISTORY_FILE):
             try:
                 with open(HISTORY_FILE, "r", encoding="utf-8") as f:
@@ -639,7 +838,12 @@ class TransferHistory:
             except Exception:
                 self.records = []
 
+    def load(self):
+        self._loaded = False
+        self._ensure_loaded()
+
     def save(self):
+        self._ensure_loaded()
         try:
             with open(HISTORY_FILE, "w", encoding="utf-8") as f:
                 json.dump(self.records, f, ensure_ascii=False, indent=2)
@@ -647,6 +851,7 @@ class TransferHistory:
             pass
 
     def add(self, direction, filename, size, status, verify_result="", speed="", encrypted=False):
+        self._ensure_loaded()
         record = {
             "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "direction": direction, "filename": filename, "size": size,
@@ -658,9 +863,11 @@ class TransferHistory:
         self.save()
 
     def get_all(self):
+        self._ensure_loaded()
         return self.records
 
     def clear(self):
+        self._loaded = True
         self.records = []
         self.save()
 
@@ -830,7 +1037,6 @@ class LanTransferGUI:
         root.geometry("900x820")
         root.resizable(False, False)
 
-        self.theme = apply_theme(root, "light")
         self.history = TransferHistory()
         self.floating_ball = FloatingProgressBall()
         self.speed_chart = SpeedChartWindow()
@@ -848,15 +1054,14 @@ class LanTransferGUI:
         row = ttk.Frame(frm_iface)
         row.pack(fill="x")
         ttk.Label(row, text="网卡:").pack(side="left")
-        self.iface_var = tk.StringVar()
-        interfaces = get_ethernet_interfaces()
-        self.iface_combo = ttk.Combobox(row, textvariable=self.iface_var, values=interfaces, width=16, state="readonly")
+        self.iface_var = tk.StringVar(value="")
+        # PowerShell 枚举网卡仅在点「刷新 / 设IP / DHCP」时执行
+        self.iface_combo = ttk.Combobox(row, textvariable=self.iface_var, values=[], width=16, state="readonly")
         self.iface_combo.pack(side="left", padx=3)
-        if interfaces:
-            self.iface_combo.current(0)
         ttk.Button(row, text="刷新", command=self.refresh_iface).pack(side="left", padx=2)
-        self.ip_label = ttk.Label(frm_iface, text=f"IP: {get_local_ip()}", foreground="blue")
+        self.ip_label = ttk.Label(frm_iface, text="IP: ...", foreground="blue")
         self.ip_label.pack(anchor="w", pady=1)
+        self._ifaces_ready = False
 
         # 多网卡绑定
         multi_row = ttk.Frame(frm_iface)
@@ -865,7 +1070,7 @@ class LanTransferGUI:
         ttk.Checkbutton(multi_row, text="🔗 多网卡绑定", variable=self.multi_nic_var, command=self.on_multi_nic_toggle).pack(side="left")
         ttk.Label(multi_row, text="副网卡:").pack(side="left", padx=4)
         self.secondary_iface_var = tk.StringVar()
-        self.secondary_combo = ttk.Combobox(multi_row, textvariable=self.secondary_iface_var, values=interfaces, width=14, state="disabled")
+        self.secondary_combo = ttk.Combobox(multi_row, textvariable=self.secondary_iface_var, values=[], width=14, state="disabled")
         self.secondary_combo.pack(side="left", padx=2)
         ttk.Label(multi_row, text="副IP:").pack(side="left", padx=2)
         self.secondary_ip_var = tk.StringVar(value="192.168.100.2")
@@ -896,6 +1101,7 @@ class LanTransferGUI:
         ttk.Label(r1, text="端口:").pack(side="left")
         self.port_var = tk.StringVar(value=str(DEFAULT_PORT))
         ttk.Entry(r1, textvariable=self.port_var, width=7).pack(side="left", padx=2)
+        self.port_var.trace_add("write", lambda *_: self._sync_discover_port())
         ttk.Label(r1, text="限速:").pack(side="left", padx=(8,2))
         self.speed_var = tk.StringVar(value="0")
         self.speed_combo = ttk.Combobox(r1, textvariable=self.speed_var, width=7, state="readonly",
@@ -912,8 +1118,10 @@ class LanTransferGUI:
         # 设备发现
         ttk.Button(r1, text="📡 发现设备", command=self.discover_devices).pack(side="right", padx=3)
         self.discovered_devices = {}
-        self.device_combo = ttk.Combobox(r1, width=15, state="readonly")
+        self.device_combo = ttk.Combobox(r1, width=18, state="readonly")
         self.device_combo.pack(side="right", padx=2)
+        self.device_combo.bind("<<ComboboxSelected>>", self.on_device_selected)
+        self._device_labels = []  # 与 combo values 对齐的 peer 列表
 
         r2 = ttk.Frame(frm_xfer)
         r2.pack(fill="x", pady=1)
@@ -981,6 +1189,7 @@ class LanTransferGUI:
         ttk.Button(frm_btn, text="🚀 开始传输", style="Accent.TButton", command=self.start_transfer).pack(side="left", padx=3)
         ttk.Button(frm_btn, text="⏹ 停止", command=self.stop_transfer).pack(side="left", padx=3)
         ttk.Button(frm_btn, text="🌐 HTTP共享", command=self.start_http).pack(side="left", padx=3)
+        ttk.Button(frm_btn, text="📱 二维码", command=self.show_share_qr).pack(side="left", padx=3)
         ttk.Button(frm_btn, text="📋 历史记录", command=lambda: show_history_window(self.history)).pack(side="left", padx=3)
         self.theme_btn = ttk.Button(frm_btn, text="🌙 深色主题", command=self.toggle_theme)
         self.theme_btn.pack(side="left", padx=3)
@@ -999,6 +1208,8 @@ class LanTransferGUI:
         self.stop_event = threading.Event()
         self.transfer_thread = None
         self.http_server = None
+        self.qr_win = None
+        self.share_url = ""
 
         self.on_role_change()
         self.on_encrypt_toggle()
@@ -1008,14 +1219,86 @@ class LanTransferGUI:
         else:
             self.log_write("⚠️ 未安装 tkinterdnd2，拖拽不可用：pip install tkinterdnd2\n")
 
-        apply_theme(self.root, current_theme)
-
-        try:
-            self.discovery.ensure(int(self.port_var.get()))
-        except Exception as e:
-            self.log_write(f"⚠️ 设备发现未启动: {e}\n")
+        self.theme = apply_theme(self.root, current_theme)
+        # 重依赖 / PowerShell / UDP 发现全部推到首帧之后
+        self.root.after(50, self._post_startup)
 
     # ---- 方法 ----
+    def _post_startup(self):
+        """启动后只做轻量初始化：本机 IP（socket）+ UDP 发现，不启动 PowerShell。"""
+        def worker():
+            try:
+                ip = get_local_ip()
+                self.root.after(0, lambda: self.ip_label.config(text=f"IP: {ip}"))
+            except Exception:
+                pass
+            try:
+                port = int(self.port_var.get())
+                self.discovery.ensure(port)
+            except Exception as e:
+                self.root.after(0, lambda: self.log_write(f"⚠️ 设备发现未启动: {e}\n"))
+        threading.Thread(target=worker, daemon=True).start()
+        self.root.after(1500, self._poll_discovered)
+
+    def _sync_discover_port(self):
+        try:
+            self.discovery.set_tcp_port(int(self.port_var.get()))
+        except ValueError:
+            pass
+
+    def _poll_discovered(self):
+        """周期同步发现列表到 combo（对端自动上线/掉线）。"""
+        try:
+            if not self.root.winfo_exists():
+                return
+            devices = self.discovery.snapshot()
+            sig = tuple((d["ip"], d["name"], d.get("port")) for d in devices)
+            if sig != getattr(self, "_device_sig", None):
+                self._device_sig = sig
+                self._refresh_device_combo(devices, log=False, notify=False)
+            self.root.after(2000, self._poll_discovered)
+        except tk.TclError:
+            pass
+
+    def _apply_iface_list(self, interfaces, ip=None):
+        self.iface_combo["values"] = interfaces
+        self.secondary_combo["values"] = interfaces
+        self._ifaces_ready = bool(interfaces)
+        if interfaces:
+            self.iface_combo.current(0)
+        if ip is not None:
+            self.ip_label.config(text=f"IP: {ip}")
+
+    def _load_ifaces_async(self, on_done=None, force=True):
+        """按需启动 PowerShell 枚举网卡。"""
+        def worker():
+            try:
+                interfaces = get_ethernet_interfaces(force=force)
+                ip = get_local_ip()
+            except Exception as e:
+                self.root.after(0, lambda: self.log_write(f"⚠️ 网卡枚举失败: {e}\n"))
+                return
+            def done():
+                self._apply_iface_list(interfaces, ip)
+                if on_done:
+                    on_done()
+            self.root.after(0, done)
+        self.log_write("🔎 正在枚举网卡（PowerShell）...\n")
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _ensure_iface_selected(self, then):
+        iface = self.iface_var.get().strip()
+        if self._ifaces_ready and iface:
+            then(iface)
+            return
+        def after_load():
+            name = self.iface_var.get().strip()
+            if not name:
+                messagebox.showerror("错误", "未找到可用网卡")
+                return
+            then(name)
+        self._load_ifaces_async(on_done=after_load, force=True)
+
     def log_write(self, text, raw=False):
         def _do():
             try:
@@ -1040,17 +1323,16 @@ class LanTransferGUI:
             self.root.after(0, _do)
 
     def refresh_iface(self):
-        interfaces = get_ethernet_interfaces()
-        self.iface_combo["values"] = interfaces
-        self.secondary_combo["values"] = interfaces
-        if interfaces:
-            self.iface_combo.current(0)
-        self.ip_label.config(text=f"IP: {get_local_ip()}")
+        self._load_ifaces_async(force=True)
 
     def on_role_change(self):
         role = self.role_var.get()
         if role == "receiver":
             self.target_var.set("")
+            return
+        if self._device_labels:
+            self._apply_peer(self._device_labels[0])
+            self.device_combo.current(0)
         else:
             self.target_var.set("192.168.99.1")
 
@@ -1128,22 +1410,62 @@ class LanTransferGUI:
             self.root.after(0, lambda: self._update_device_list(devices))
         threading.Thread(target=worker, daemon=True).start()
 
-    def _update_device_list(self, devices):
+    def _device_label(self, d):
+        return f"{d['name']} ({d['ip']}:{d.get('port', DEFAULT_PORT)})"
+
+    def _refresh_device_combo(self, devices, log=False, notify=False, select_first=False):
         self.discovered_devices = {d["ip"]: d for d in devices}
-        if devices:
-            self.device_combo["values"] = [f"{d['name']} ({d['ip']})" for d in devices]
+        self._device_sig = tuple((d["ip"], d["name"], d.get("port")) for d in devices)
+        labels = [self._device_label(d) for d in devices]
+        prev = self.device_combo.get()
+        self._device_labels = devices
+        self.device_combo["values"] = labels
+        if not devices:
+            self.device_combo.set("")
+            if log:
+                self.log_write("❌ 未发现设备\n")
+            return
+        if select_first or prev not in labels:
             self.device_combo.current(0)
-            self.target_var.set(devices[0]["ip"])
+            self._apply_peer(devices[0])
+        else:
+            self.device_combo.set(prev)
+        if log:
             self.log_write(f"✅ 发现 {len(devices)} 个设备\n")
             for d in devices:
-                self.log_write(f"   {d['name']} - {d['ip']}\n")
+                self.log_write(f"   {d['name']} - {d['ip']}:{d.get('port', DEFAULT_PORT)}\n")
+        if notify:
             send_notification("设备发现", f"发现 {len(devices)} 个设备")
-        else:
-            self.log_write("❌ 未发现设备\n")
 
-    def on_device_discovered(self, ip, name):
-        self.discovered_devices[ip] = {"ip": ip, "name": name}
-        self.root.after(0, lambda: self.log_write(f"📡 发现设备: {name} ({ip})\n"))
+    def _apply_peer(self, peer):
+        if self.role_var.get() != "sender":
+            return
+        self.target_var.set(peer["ip"])
+        port = peer.get("port")
+        if port:
+            self.port_var.set(str(port))
+            self.discovery.set_tcp_port(port)
+
+    def _update_device_list(self, devices):
+        self._refresh_device_combo(devices, log=True, notify=True, select_first=True)
+
+    def on_device_selected(self, _event=None):
+        idx = self.device_combo.current()
+        if idx < 0 or idx >= len(self._device_labels):
+            return
+        self._apply_peer(self._device_labels[idx])
+        peer = self._device_labels[idx]
+        self.log_write(f"🔗 已选对端: {peer['name']} ({peer['ip']}:{peer.get('port', DEFAULT_PORT)})\n")
+
+    def on_device_discovered(self, ip, name, port, is_new):
+        self.discovered_devices[ip] = {"ip": ip, "name": name, "port": port}
+        if is_new:
+            self.root.after(0, lambda: self.log_write(
+                f"📡 发现设备: {name} ({ip}:{port})\n"
+            ))
+            self.root.after(0, lambda: self._refresh_device_combo(
+                self.discovery.snapshot(), log=False, notify=False
+            ))
 
     def add_file_to_queue(self):
         f = filedialog.askopenfilename(title="选择文件")
@@ -1194,26 +1516,31 @@ class LanTransferGUI:
         threading.Thread(target=worker, daemon=True).start()
 
     def apply_ip(self):
-        iface = self.iface_var.get()
-        if not iface:
-            messagebox.showerror("错误", "请选择网卡")
-            return
-        ip = ROLE_RECEIVER_IP if self.role_var.get() == "receiver" else ROLE_SENDER_IP
-        if not set_static_ip(iface, ip):
-            messagebox.showerror("错误", f"设置 IP 失败: {iface} → {ip}")
-            return
-        self.ip_label.config(text=f"IP: {ip}")
-        self.log_write(f"✅ IP → {ip} ({iface})\n")
+        def do_set(iface):
+            ip = ROLE_RECEIVER_IP if self.role_var.get() == "receiver" else ROLE_SENDER_IP
+            if not set_static_ip(iface, ip):
+                messagebox.showerror("错误", f"设置 IP 失败: {iface} → {ip}")
+                return
+            self.ip_label.config(text=f"IP: {ip}")
+            self.log_write(f"✅ IP → {ip} ({iface})\n")
+        self._ensure_iface_selected(do_set)
 
     def apply_secondary_ip(self):
-        iface = self.secondary_iface_var.get()
-        ip = self.secondary_ip_var.get()
-        if not iface or not ip:
-            return
-        if not set_static_ip(iface, ip):
-            self.log_write(f"❌ 副IP 设置失败: {ip} ({iface})\n")
-            return
-        self.log_write(f"✅ 副IP → {ip} ({iface})\n")
+        def do_set(_primary_ignored=None):
+            iface = self.secondary_iface_var.get().strip()
+            ip = self.secondary_ip_var.get().strip()
+            if not iface or not ip:
+                messagebox.showerror("错误", "请先刷新并选择副网卡，填写副IP")
+                return
+            if not set_static_ip(iface, ip):
+                self.log_write(f"❌ 副IP 设置失败: {ip} ({iface})\n")
+                return
+            self.log_write(f"✅ 副IP → {ip} ({iface})\n")
+
+        if self._ifaces_ready and self.secondary_iface_var.get().strip():
+            do_set()
+        else:
+            self._load_ifaces_async(on_done=do_set, force=True)
 
     def _busy(self):
         return (self.transfer_thread and self.transfer_thread.is_alive()) or self.http_server is not None
@@ -1224,7 +1551,50 @@ class LanTransferGUI:
         self.http_server = None
         if server:
             threading.Thread(target=server.shutdown, daemon=True).start()
+        self._close_qr_win()
+        self.share_url = ""
         self.log_write("⏹ 正在停止...\n")
+
+    def _current_share_ip(self):
+        """优先用界面显示的本机 IP（直连场景常被手动设成 192.168.99.x）。"""
+        text = self.ip_label.cget("text")
+        if text.startswith("IP:"):
+            ip = text[3:].strip()
+            if ip and ip not in (".", "...", "未知"):
+                return ip
+        return get_local_ip()
+
+    def _close_qr_win(self):
+        win = self.qr_win
+        self.qr_win = None
+        if win is not None:
+            try:
+                win.destroy()
+            except tk.TclError:
+                pass
+
+    def _open_qr_win(self, url):
+        self._close_qr_win()
+        self.share_url = url
+        self.qr_win = show_share_qr_window(
+            self.root, url, on_close=lambda: setattr(self, "qr_win", None),
+        )
+
+    def show_share_qr(self):
+        """已在 HTTP 共享时重新弹出二维码；否则提示先开共享。"""
+        if self.share_url and self.http_server is not None:
+            self._open_qr_win(self.share_url)
+            return
+        if self.http_server is None:
+            messagebox.showinfo("提示", "请先点击「HTTP共享」选择目录，启动后会自动弹出二维码")
+            return
+        try:
+            port = int(self.port_var.get())
+        except ValueError:
+            messagebox.showerror("错误", "端口无效")
+            return
+        url = share_base_url(self._current_share_ip(), port)
+        self._open_qr_win(url)
 
     def start_transfer(self):
         if self._busy():
@@ -1235,6 +1605,8 @@ class LanTransferGUI:
         except ValueError:
             messagebox.showerror("错误", "端口无效")
             return
+        self.discovery.ensure(port)
+        self.discovery.probe()
         role = self.role_var.get()
         self.stop_event.clear()
         global_progress["speed_history"] = []
@@ -1301,19 +1673,22 @@ class LanTransferGUI:
         if not d:
             return
         self.stop_event.clear()
+        ip = self._current_share_ip()
+        url = share_base_url(ip, port)
         self.log_write(f"🌐 HTTP 共享启动\n")
+        self.log_write(f"   链接: {url}\n")
+        self.log_write(f"   目录: {d}\n")
         self.transfer_thread = start_http_server(port, d, self.log_write, self, self.stop_event)
+        self._open_qr_win(url)
 
     def restore_dhcp(self):
-        iface = self.iface_var.get()
-        if not iface:
-            messagebox.showerror("错误", "请选择网卡")
-            return
-        if not set_dhcp(iface):
-            messagebox.showerror("错误", f"恢复 DHCP 失败: {iface}")
-            return
-        self.ip_label.config(text=f"IP: {get_local_ip()}")
-        self.log_write("✅ DHCP 已恢复\n")
+        def do_restore(iface):
+            if not set_dhcp(iface):
+                messagebox.showerror("错误", f"恢复 DHCP 失败: {iface}")
+                return
+            self.ip_label.config(text=f"IP: {get_local_ip()}")
+            self.log_write("✅ DHCP 已恢复\n")
+        self._ensure_iface_selected(do_restore)
 
 # ==================== 接收端 ====================
 def _extract_zip(zip_path, dest_dir):
@@ -1659,7 +2034,7 @@ def start_http_server(port, share_dir, log_callback, app, stop_event):
             )
             server = http.server.HTTPServer(("0.0.0.0", port), handler)
             app.http_server = server
-            log_callback(f"🌐 HTTP 共享端口 {port}，目录 {share_dir}。点「停止」结束\n")
+            log_callback(f"🌐 HTTP 共享端口 {port}，目录 {share_dir}。扫码或打开链接即可下载。点「停止」结束\n")
             server.serve_forever()
         except Exception as e:
             log_callback(f"❌ HTTP 错误: {e}\n")
