@@ -1714,8 +1714,8 @@ def start_receiver(port, save_dir, log_callback, resume_var, rate_limiter, verif
             srv.listen(5)
             srv.settimeout(1.0)
             log_callback(f"🟢 接收端监听 {bind_ip or '0.0.0.0'}:{port}，点「停止」结束\n")
-
-            while not stop_event.is_set():
+            
+            while not stop_event.is_set(): 
                 try:
                     conn, addr = srv.accept()
                 except socket.timeout:
