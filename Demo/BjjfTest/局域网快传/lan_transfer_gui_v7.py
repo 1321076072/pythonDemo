@@ -52,7 +52,7 @@ def _load_crypto():
 ROLE_RECEIVER_IP = "192.168.99.1"
 ROLE_SENDER_IP   = "192.168.99.2"
 DEFAULT_PORT     = 5000
-CHUNK_SIZE       = 65536
+CHUNK_SIZE       = 256 * 1024  # 局域网用大块，64K 会白白增加系统调用次数
 MAGIC_HEADER     = b"LANT2024"
 DISCOVER_MAGIC   = b"LANT_DISCOVER_v8"
 DISCOVER_PORT    = DEFAULT_PORT + 100  # 固定发现口，与传输端口解耦
@@ -1894,7 +1894,10 @@ def start_sender_queue(target_ip, port, queue_items, log_callback, resume_var, r
                         zip_path = os.path.join(os.path.dirname(item_path), folder_name + ".zip")
                         if os.path.exists(zip_path):
                             os.remove(zip_path)
-                        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=1) as zf:
+                        # 局域网带宽远大于 CPU：STORE 只打包不压缩。
+                        # DEFLATE 对已压缩内容（jpg/pdf/docx）几乎不降体积，却拖慢打包。
+                        log_callback(f"📦 打包文件夹（STORE）: {folder_name}\n")
+                        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as zf:
                             for root, dirs, files in os.walk(item_path):
                                 dirs.sort()
                                 for file in files:
@@ -1929,6 +1932,11 @@ def start_sender_queue(target_ip, port, queue_items, log_callback, resume_var, r
                     file_size = os.path.getsize(payload)
                     log_callback(f"📋 名称: {send_name} ({file_size/1024/1024:.1f} MB)\n")
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                    try:
+                        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024 * 1024)
+                    except OSError:
+                        pass
                     sock.settimeout(30)
                     if bind_ip:
                         sock.bind((bind_ip, 0))
