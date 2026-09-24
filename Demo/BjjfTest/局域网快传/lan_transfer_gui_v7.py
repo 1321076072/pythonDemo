@@ -2071,8 +2071,64 @@ def show_history_window(history):
             "是" if r.get("encrypted") else "否", r.get("speed", "")
         ))
 
+# ==================== 单实例 ====================
+_INSTANCE_MUTEX_NAME = "Local\\LanTransferGUI_v7_SingleInstance"
+_INSTANCE_MUTEX = None  # 进程存活期间持有，防止被 GC 释放
+
+def _activate_existing_window(title="局域网直连传输工具 v7.0"):
+    """把已运行的主窗口拉到前台。"""
+    if sys.platform != "win32":
+        return False
+    user32 = ctypes.windll.user32
+    hwnd = user32.FindWindowW(None, title)
+    if not hwnd:
+        return False
+    if user32.IsIconic(hwnd):
+        user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+    user32.SetForegroundWindow(hwnd)
+    return True
+
+def acquire_single_instance():
+    """
+    成功拿到锁返回 True；已有实例则激活旧窗口并返回 False。
+    Windows：命名 Mutex（exe 连点也不会起第二个）。
+    其它：本机 TCP 端口占位。
+    """
+    global _INSTANCE_MUTEX
+    if sys.platform == "win32":
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.CreateMutexW(None, False, _INSTANCE_MUTEX_NAME)
+        if not handle:
+            return True  # 拿不到句柄就放行，别把自己锁死
+        ERROR_ALREADY_EXISTS = 183
+        if kernel32.GetLastError() == ERROR_ALREADY_EXISTS:
+            kernel32.CloseHandle(handle)
+            _activate_existing_window()
+            return False
+        _INSTANCE_MUTEX = handle
+        return True
+
+    # 非 Windows：绑定固定环回口当锁
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+        sock.bind(("127.0.0.1", DISCOVER_PORT + 1))
+        _INSTANCE_MUTEX = sock  # 持有至进程退出
+        return True
+    except OSError:
+        return False
+
 # ==================== 主入口 ====================
 if __name__ == "__main__":
+    if not acquire_single_instance():
+        # 已激活旧窗口；激活失败时再弹提示
+        if sys.platform == "win32" and not ctypes.windll.user32.FindWindowW(
+            None, "局域网直连传输工具 v7.0"
+        ):
+            ctypes.windll.user32.MessageBoxW(
+                0, "局域网直连传输工具已在运行。", "提示", 0x40
+            )
+        sys.exit(0)
     if HAS_DND:
         root = TkinterDnD.Tk()
     else:
