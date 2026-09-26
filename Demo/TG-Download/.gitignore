@@ -1,0 +1,12 @@
+config.json
+history.jsonl
+.instance.lock
+*.session
+*.session-journal
+downloads/
+__pycache__/
+**/__pycache__/
+*.pyc
+build_pyi/
+*.spec
+*.part

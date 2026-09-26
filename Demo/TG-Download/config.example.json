@@ -1,0 +1,25 @@
+{
+  "api_id": 12345678,
+  "api_hash": "your_api_hash_from_my.telegram.org",
+  "phone": "",
+  "session": "tg_download",
+  "download_dir": "downloads",
+  "proxy": {
+    "enabled": false,
+    "type": "socks5",
+    "addr": "127.0.0.1",
+    "port": 1080,
+    "username": null,
+    "password": null
+  },
+  "options": {
+    "skip_existing": true,
+    "connection_retries": 5,
+    "timeout": 30,
+    "max_retries": 3,
+    "download_group": true,
+    "request_size_kb": 512
+  },
+  "account": {},
+  "last_run": {}
+}
